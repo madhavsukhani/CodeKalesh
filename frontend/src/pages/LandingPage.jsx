@@ -78,7 +78,7 @@ export default function LandingPage({ onLoginSuccess }) {
                 <Milk className="w-6 h-6 text-white" />
               </div>
               <div>
-                <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-400 bg-clip-text text-transparent">
+                <span className="text-xl font-bold tracking-tight text-sky-600">
                   MilkRouter
                 </span>
                 <p className="text-[11px] text-slate-400">Rajpura Milk Chilling Union (MCC_01)</p>

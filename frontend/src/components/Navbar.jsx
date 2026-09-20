@@ -35,7 +35,7 @@ export default function Navbar({ activeTab, setActiveTab, onReset, currentUser, 
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-sky-100 to-sky-400 bg-clip-text text-transparent">
+                <span className="text-xl font-bold tracking-tight text-sky-600">
                   MilkRouter
                 </span>
               </div>

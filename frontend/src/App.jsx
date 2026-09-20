@@ -171,6 +171,7 @@ export default function App() {
             onReoptimize={handleReoptimize}
             isOptimizing={isLoading}
             currentUser={currentUser}
+            onStopCompleted={loadAllData}
           />
         )}
 

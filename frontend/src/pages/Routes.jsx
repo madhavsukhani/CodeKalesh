@@ -5,12 +5,14 @@ import {
   RotateCw, 
 } from 'lucide-react';
 import RouteMap from '../components/RouteMap';
+import { completeStop } from '../api';
 
 export default function Routes({ 
   routes = [], 
   onReoptimize, 
   isOptimizing,
-  currentUser
+  currentUser,
+  onStopCompleted
 }) {
   const isDriver = currentUser?.role === 'driver';
   const driverVanId = currentUser?.van_id;
@@ -19,6 +21,34 @@ export default function Routes({
     : routes;
   const [selectedVan, setSelectedVan] = useState('all');
   const activeSelectedVan = isDriver ? driverVanId : selectedVan;
+  const [selectedStop, setSelectedStop] = useState(null);
+  const [actualLitres, setActualLitres] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [collectionError, setCollectionError] = useState(null);
+
+  const handleStopSelect = (stop) => {
+    if (!isDriver || stop.is_completed) return;
+    setSelectedStop(stop);
+    setActualLitres(String(stop.predicted_litres || ''));
+    setCollectionError(null);
+  };
+
+  const handleCollectionSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedStop || !actualLitres) return;
+
+    setIsSubmitting(true);
+    setCollectionError(null);
+    try {
+      await completeStop(selectedStop.stop_id, actualLitres, 'Recorded from Smart Routes');
+      setSelectedStop(null);
+      if (onStopCompleted) await onStopCompleted();
+    } catch (err) {
+      setCollectionError(err.message || 'Could not record this collection');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -142,9 +172,17 @@ export default function Routes({
 
                 <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
                   {route.stop_details?.map((stop, sIdx) => (
-                    <div 
-                      key={stop.stop_id}
-                      className="p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/60 hover:border-slate-700 flex items-center justify-between text-xs transition-colors"
+                    <React.Fragment key={stop.stop_id}>
+                      <div 
+                      onClick={() => handleStopSelect(stop)}
+                      role={isDriver && !stop.is_completed ? 'button' : undefined}
+                      tabIndex={isDriver && !stop.is_completed ? 0 : undefined}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') handleStopSelect(stop);
+                      }}
+                      className={`p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/60 flex items-center justify-between text-xs transition-colors ${
+                        isDriver && !stop.is_completed ? 'cursor-pointer hover:border-sky-400/70 hover:bg-sky-50/40' : ''
+                      }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <span className={`w-5 h-5 rounded-full ${isVan1 ? 'bg-blue-600' : 'bg-emerald-600'} text-white font-bold flex items-center justify-center text-[10px]`}>
@@ -178,7 +216,42 @@ export default function Routes({
                           Load: {stop.current_load_litres}L
                         </div>
                       </div>
-                    </div>
+                      </div>
+                      {isDriver && selectedStop?.stop_id === stop.stop_id && (
+                      <form onSubmit={handleCollectionSubmit} className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2">
+                        <label htmlFor={`litres-${stop.stop_id}`} className="block text-xs font-semibold text-slate-700">
+                          Actual milk collected (litres)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            id={`litres-${stop.stop_id}`}
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={actualLitres}
+                            onChange={(event) => setActualLitres(event.target.value)}
+                            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 focus:border-sky-500 focus:outline-none"
+                            autoFocus
+                          />
+                          <button
+                            type="submit"
+                            disabled={isSubmitting || !actualLitres}
+                            className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-bold text-white hover:bg-sky-700 disabled:opacity-50"
+                          >
+                            {isSubmitting ? 'Saving...' : 'Save collection'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStop(null)}
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        {collectionError && <p className="text-xs font-semibold text-rose-600">{collectionError}</p>}
+                      </form>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
               </div>
